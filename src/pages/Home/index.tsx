@@ -1,4 +1,4 @@
-import { Play } from 'phosphor-react'
+import { Play } from "phosphor-react";
 import {
   CountDownContainer,
   FormContainer,
@@ -7,55 +7,78 @@ import {
   Separator,
   StartCountdownButton,
   TaskInput,
-} from './styles'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as zod from 'zod'
-import { useState } from 'react'
+} from "./styles";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as zod from "zod";
+import { useEffect, useState } from "react";
+import { differenceInSeconds } from "date-fns";
 
 const newCycleFormValidationSchema = zod.object({
-  task: zod.string().min(1, 'Informe a tarefa'),
+  task: zod.string().min(1, "Informe a tarefa"),
   minutesAmount: zod
     .number()
-    .min(5, 'O ciclo precisa ser de no mínimo 5 minutos')
-    .max(60, 'O ciclo precisa ser de no máximo 60 minutos'),
-})
+    .min(5, "O ciclo precisa ser de no mínimo 5 minutos")
+    .max(60, "O ciclo precisa ser de no máximo 60 minutos"),
+});
 
-type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>
+type NewCycleFormData = zod.infer<typeof newCycleFormValidationSchema>;
 
 interface Cycle {
-  id: string
-  task: string
-  minutesAmount: number
+  id: string;
+  task: string;
+  minutesAmount: number;
+  startDate: Date;
 }
 
 export const Home = () => {
-  const [cycles, setCycles] = useState<Cycle[]>([])
-  const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
+  const [cycles, setCycles] = useState<Cycle[]>([]);
+  const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
+  const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
 
   const { register, handleSubmit, watch, reset } = useForm<NewCycleFormData>({
     resolver: zodResolver(newCycleFormValidationSchema),
     defaultValues: {
-      task: '',
+      task: "",
       minutesAmount: 0,
     },
-  })
+  });
+
+  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+
+  useEffect(() => {
+    if (activeCycle) {
+      setInterval(() => {
+        setAmountSecondsPassed(
+          differenceInSeconds(new Date(), activeCycle.startDate)
+        );
+      }, 1000);
+    }
+  }, [activeCycle]);
 
   function handleCreateNewCycle(data: NewCycleFormData) {
     const newCycle: Cycle = {
       id: new Date().getTime().toString(),
       task: data.task,
       minutesAmount: data.minutesAmount,
-    }
-    setCycles((state) => [...state, newCycle])
-    setActiveCycleId(newCycle.id)
-    reset()
+      startDate: new Date(),
+    };
+    setCycles((state) => [...state, newCycle]);
+    setActiveCycleId(newCycle.id);
+    reset();
   }
 
-  const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
+  const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
+  const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
 
-  const task = watch('task')
-  const isSubmitDisabled = !task
+  const minutesAmount = Math.floor(currentSeconds / 60);
+  const secondsAmount = currentSeconds % 60;
+
+  const minutes = String(minutesAmount).padStart(2, "0");
+  const seconds = String(secondsAmount).padStart(2, "0");
+
+  const task = watch("task");
+  const isSubmitDisabled = !task;
 
   return (
     <HomeContainer>
@@ -67,7 +90,7 @@ export const Home = () => {
             type="text"
             placeholder="Dê um nome para o seu projeto"
             list="task-suggestions"
-            {...register('task')}
+            {...register("task")}
           />
 
           <datalist id="task-suggestions">
@@ -84,7 +107,7 @@ export const Home = () => {
             step={5}
             min={5}
             max={60}
-            {...register('minutesAmount', { valueAsNumber: true })}
+            {...register("minutesAmount", { valueAsNumber: true })}
           />
 
           <span>minutos.</span>
@@ -104,5 +127,5 @@ export const Home = () => {
         </StartCountdownButton>
       </form>
     </HomeContainer>
-  )
-}
+  );
+};
